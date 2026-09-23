@@ -171,6 +171,19 @@ The Grafana dashboard is organized into sections reflecting the observability do
 - Tool frequency and success rates
 - Performance bottleneck identification
 
+### 🧩 Skills
+- Skill activations, cost and tokens per skill, source and invocation trigger
+
+### 🔌 MCP Servers & Tools
+- Calls, success rate, p95 latency and result size per server/tool
+- Server connection status and cost of requests that consumed MCP results
+
+### 🛡️ Permissions
+- Tool decisions by source (allow rule, hook, user prompt, rejection) and by tool
+- Code edit decisions, permission mode changes, rejection log
+
+> Skill and MCP names on tool events require `OTEL_LOG_TOOL_DETAILS=1`.
+
 ### ⚡ Performance & Errors
 - API latency by model, error rate tracking
 - Performance monitoring as recommended
