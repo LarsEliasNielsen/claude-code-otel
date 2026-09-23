@@ -89,6 +89,15 @@ setup-claude: ## Display Claude Code telemetry setup instructions
 	@echo "export OTEL_METRIC_EXPORT_INTERVAL=10000"
 	@echo "export OTEL_LOGS_EXPORT_INTERVAL=5000"
 	@echo ""
+	@echo "Richer data for the Skills, MCP and Permissions sections:"
+	@echo "export OTEL_LOG_TOOL_DETAILS=1                     # skill names, MCP names, tool params, full errors, custom command names"
+	@echo "export OTEL_METRICS_INCLUDE_VERSION=true           # compare behaviour across Claude Code versions"
+	@echo "export OTEL_METRICS_INCLUDE_REPOSITORY=true        # per-repo cost and usage (vcs.* attributes)"
+	@echo "export OTEL_RESOURCE_ATTRIBUTES=team.id=platform   # your own segmentation (comma-separated key=value, no spaces)"
+	@echo ""
+	@echo "Note: OTEL_LOG_TOOL_DETAILS=1 exports bash commands and tool inputs to Loki."
+	@echo "Variables take effect for Claude Code sessions started after they are set."
+	@echo ""
 	@echo "Then run: claude"
 
 demo-metrics: ## Generate demo metrics for testing

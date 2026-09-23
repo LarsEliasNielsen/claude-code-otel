@@ -87,9 +87,17 @@ export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
 export OTEL_METRIC_EXPORT_INTERVAL=10000
 export OTEL_LOGS_EXPORT_INTERVAL=5000
 
+# Richer data for the Skills, MCP and Permissions sections
+export OTEL_LOG_TOOL_DETAILS=1                     # skill names, MCP names, tool params, full errors, custom command names
+export OTEL_METRICS_INCLUDE_VERSION=true           # compare behaviour across Claude Code versions
+export OTEL_METRICS_INCLUDE_REPOSITORY=true        # per-repo cost and usage (vcs.* attributes)
+export OTEL_RESOURCE_ATTRIBUTES=team.id=platform   # your own segmentation (comma-separated key=value, no spaces)
+
 # Run Claude Code
 claude
 ```
+
+> `OTEL_LOG_TOOL_DETAILS=1` exports bash commands and tool inputs to Loki. Treat the logs backend as sensitive when it is on. The variables take effect for Claude Code sessions started after they are set.
 
 ### 3. Access Dashboards
 - **Grafana**: http://localhost:3000 (admin/admin)
