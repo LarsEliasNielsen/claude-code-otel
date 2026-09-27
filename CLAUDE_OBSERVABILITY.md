@@ -433,6 +433,36 @@ All of these need `OTEL_LOG_TOOL_DETAILS=1`. `tool_input` shortens long strings 
 
 The regexp skips leading `VAR=value` assignments, `cd dir &&` and `sudo`. Write it as a backtick string: inside double quotes LogQL rejects `\s` as an invalid escape. It only sees the first program, so `a && b` and pipes count as `a`. Add a risk category with one more filter on the result, e.g. `| program=~"(?i)rm|Remove-Item|chmod"` for file destruction or `| command=~"(?i).*(npm|pip|pnpm) (install|add).*"` for package installs.
 
+### Sigma Detections
+
+`security/sigma/sigma_hook.py` is a report-only PreToolUse hook. It matches every Bash and PowerShell command against SigmaHQ command-line rules and sends the result to the collector over OTLP/HTTP (`localhost:4318`, override with `SIGMA_HOOK_OTLP_ENDPOINT`). The events land in Loki under `service_name="claude-code-sigma"`, separate from Claude Code's own events, and power the **Claude Code Security** dashboard.
+
+| Event | When | Attributes |
+| ----- | ---- | ---------- |
+| `sigma_scan` | every scanned command | `tool_use_id`, `session_id`, `prompt_id`, `tool_name`, `command`, `cwd`, `permission_mode`, `segment_count`, `match_count`, `max_level`, `duration_ms`, `rules_version` |
+| `sigma_match` | once per matched rule | the same IDs plus `rule_id`, `rule_title`, `rule_level`, `rule_status`, `rule_author`, `rule_category`, `rule_reference`, `rule_falsepositives`, `mitre_techniques`, `mitre_tactics`, `matched_segment` |
+| `sigma_hook_error` | the hook failed | `error`, `tool_use_id`, `session_id` |
+
+`tool_use_id` is the same ID Claude Code puts on `tool_decision` and `tool_result`, so a match can be joined with what happened to the command:
+
+```logql
+{service_name="claude-code-sigma"} | event_name="sigma_match" | rule_level=~"high|critical"
+```
+
+```logql
+sum by (rule_title) (count_over_time({service_name="claude-code-sigma"} | event_name="sigma_match" [24h]))
+```
+
+How a command is matched:
+
+* The command is split on `&&`, `||`, `;`, `|` and newlines, respecting quotes. Heredoc bodies are skipped because they are data.
+* Each segment becomes a pseudo process per product (linux, macos, windows). `Image` is built from the first word (`/usr/bin/curl`, `C:\Windows\System32\curl.exe`), `OriginalFileName` is `<program>.exe` on Windows, and `CommandLine` is the segment.
+* One extra row carries the whole command line, so rules that look at the pipe itself (`base64 -d | bash`) still match. For the PowerShell tool that row is `powershell.exe`, and `ps_script` rules run against the whole script.
+* Fields the hook cannot know (`ParentImage`, `User`, `Hashes`, ...) stay NULL. Rules that require them never match. Exclusions based on them never apply, which only matters for processes Claude did not start.
+* The `/dev/tcp` reverse shell rule is a syslog keyword rule and not included. The netcat, python, perl, php and ruby reverse shell rules are.
+
+`rules.json` is compiled by `make sigma-rules` from a pinned SigmaHQ release (`sigma_core+`: stable and test rules at medium, high and critical). See `security/sigma/NOTICE.md` for the license (DRL 1.1).
+
 ### Cost and Performance
 
 * Cost and tokens by `model`, `query_source` (main vs subagent vs auxiliary) and `effort`

@@ -207,6 +207,32 @@ The Grafana dashboard is organized into sections reflecting the observability do
 - Real-time tool execution events and API errors
 - Structured log analysis for troubleshooting
 
+## 🚨 Sigma Command Detection
+
+A PreToolUse hook checks every Bash and PowerShell command Claude Code runs against about 1,300 [SigmaHQ](https://github.com/SigmaHQ/sigma) command-line rules (reverse shells, download cradles, encoded PowerShell, certutil abuse, and so on). Matches show up in the **Claude Code Security** dashboard with rule level, MITRE ATT&CK techniques, and whether the command succeeded and how it was approved.
+
+The hook only reports. It runs in the background, adds no delay and never blocks a command. It needs Python 3.9+ and nothing else.
+
+1. Register the hook in `~/.claude/settings.json` (`make setup-claude` prints the snippet with your path):
+
+   ```json
+   "hooks": {
+     "PreToolUse": [{
+       "matcher": "Bash|PowerShell",
+       "hooks": [{
+         "type": "command", "async": true, "timeout": 30,
+         "command": "python /path/to/claude-code-otel/security/sigma/sigma_hook.py"
+       }]
+     }]
+   }
+   ```
+
+2. Open http://localhost:3000/d/claude-code-security. Hide noisy rules with the **Exclude rules** filter.
+
+Try a command without running it: `python security/sigma/sigma_hook.py --scan "echo aGk= | base64 -d | bash"`.
+
+`make sigma-rules` rebuilds `security/sigma/rules.json` from the pinned SigmaHQ release (it installs pySigma into `security/sigma/.venv`). `make test-sigma` runs the tests. The commands are sent to your local collector only. Event reference: [CLAUDE_OBSERVABILITY.md](CLAUDE_OBSERVABILITY.md#sigma-detections).
+
 ## 🔧 Advanced Configuration
 
 ### Environment Variables

@@ -20,7 +20,15 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
   "id": null,
-  "links": [],
+  "links": [
+    {
+      "title": "Security detections",
+      "type": "link",
+      "icon": "shield",
+      "url": "/d/claude-code-security/claude-code-security",
+      "keepTime": true
+    }
+  ],
   "liveNow": false,
   "panels": [
     {
