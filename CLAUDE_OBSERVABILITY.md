@@ -411,6 +411,28 @@ The log line is the plain event name, not JSON. `| json` fails with `JSONParserE
 | How do users move between modes?           | `permission_mode_changed` by `from_mode`, `to_mode`, `trigger` |
 | Did an approved call then fail?            | join `tool_decision` and `tool_result` on `tool_use_id` |
 
+### Security
+
+| Question                                   | Source |
+| ------------------------------------------ | ------ |
+| Which programs does Claude run, how often? | `tool_result` for `Bash` and `PowerShell`, `program` extracted as below |
+| Which run without a prompt?                | same, by `program` and `decision_source` |
+| Which commands fail?                       | same, `success="false"` |
+| What reaches the network?                  | same, `program=~"curl\|wget\|ssh\|Invoke-WebRequest\|..."`, plus `WebFetch` and `WebSearch` calls |
+
+All of these need `OTEL_LOG_TOOL_DETAILS=1`. `tool_input` shortens long strings to `…[N chars]`, so the full command comes from `tool_parameters.full_command` for Bash. PowerShell has no `tool_parameters` and falls back to `tool_input.command`. `bash_command` is not usable as the program: it is Bash-only and holds the raw first token (`SP="..."`, `MSYS_NO_PATHCONV=1`, `cd`). The dashboard derives `command` and `program` like this:
+
+```logql
+{service_name="claude-code"} | event_name="tool_result" | tool_name=~"Bash|PowerShell"
+  | line_format "{{.tool_parameters}}" | json full="full_command" | drop __error__, __error_details__
+  | line_format "{{.tool_input}}" | json input="command" | drop __error__, __error_details__
+  | label_format command="{{if .full}}{{.full}}{{else}}{{.input}}{{end}}" | drop full, input
+  | line_format "{{.command}}"
+  | regexp `^\s*(?:(?:[A-Za-z_][A-Za-z0-9_]*=(?:"[^"]*"|'[^']*'|\S*)|cd\s+(?:"[^"]*"|'[^']*'|\S+)|sudo)\s*(?:&&|;)?\s*)*(?P<program>[^\s;|&()…]+)`
+```
+
+The regexp skips leading `VAR=value` assignments, `cd dir &&` and `sudo`. Write it as a backtick string: inside double quotes LogQL rejects `\s` as an invalid escape. It only sees the first program, so `a && b` and pipes count as `a`. Add a risk category with one more filter on the result, e.g. `| program=~"(?i)rm|Remove-Item|chmod"` for file destruction or `| command=~"(?i).*(npm|pip|pnpm) (install|add).*"` for package installs.
+
 ### Cost and Performance
 
 * Cost and tokens by `model`, `query_source` (main vs subagent vs auxiliary) and `effort`

@@ -3151,9 +3151,510 @@
       "type": "logs"
     },
     {
+      "title": "🔐 Security",
+      "type": "row",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 102
+      },
+      "collapsed": false
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "description": "Bash and PowerShell tool calls",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short",
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 103
+      },
+      "id": 46,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "sum(count_over_time({service_name=\"claude-code\"} | event_name=\"tool_result\" | tool_name=~\"Bash|PowerShell\" | line_format \"{{.tool_parameters}}\" | json full=\"full_command\" | drop __error__, __error_details__ | line_format \"{{.tool_input}}\" | json input=\"command\" | drop __error__, __error_details__ | label_format command=\"{{if .full}}{{.full}}{{else}}{{.input}}{{end}}\" | drop full, input | line_format \"{{.command}}\" | regexp `^\\s*(?:(?:[A-Za-z_][A-Za-z0-9_]*=(?:\"[^\"]*\"|'[^']*'|\\S*)|cd\\s+(?:\"[^\"]*\"|'[^']*'|\\S+)|sudo)\\s*(?:&&|;)?\\s*)*(?P<program>[^\\s;|&()…]+)` [$__range]))",
+          "legendFormat": "",
+          "refId": "A",
+          "queryType": "instant"
+        }
+      ],
+      "title": "Shell Commands Run",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "description": "Distinct programs, taken from the first word of each command after env assignments, cd and sudo",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short",
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 103
+      },
+      "id": 47,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "count(sum by (program) (count_over_time({service_name=\"claude-code\"} | event_name=\"tool_result\" | tool_name=~\"Bash|PowerShell\" | line_format \"{{.tool_parameters}}\" | json full=\"full_command\" | drop __error__, __error_details__ | line_format \"{{.tool_input}}\" | json input=\"command\" | drop __error__, __error_details__ | label_format command=\"{{if .full}}{{.full}}{{else}}{{.input}}{{end}}\" | drop full, input | line_format \"{{.command}}\" | regexp `^\\s*(?:(?:[A-Za-z_][A-Za-z0-9_]*=(?:\"[^\"]*\"|'[^']*'|\\S*)|cd\\s+(?:\"[^\"]*\"|'[^']*'|\\S+)|sudo)\\s*(?:&&|;)?\\s*)*(?P<program>[^\\s;|&()…]+)` | program!=\"\" [$__range])))",
+          "legendFormat": "",
+          "refId": "A",
+          "queryType": "instant"
+        }
+      ],
+      "title": "Distinct Programs",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "description": "Shell commands that exited with an error",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "short",
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 103
+      },
+      "id": 48,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "sum(count_over_time({service_name=\"claude-code\"} | event_name=\"tool_result\" | tool_name=~\"Bash|PowerShell\" | line_format \"{{.tool_parameters}}\" | json full=\"full_command\" | drop __error__, __error_details__ | line_format \"{{.tool_input}}\" | json input=\"command\" | drop __error__, __error_details__ | label_format command=\"{{if .full}}{{.full}}{{else}}{{.input}}{{end}}\" | drop full, input | line_format \"{{.command}}\" | regexp `^\\s*(?:(?:[A-Za-z_][A-Za-z0-9_]*=(?:\"[^\"]*\"|'[^']*'|\\S*)|cd\\s+(?:\"[^\"]*\"|'[^']*'|\\S+)|sudo)\\s*(?:&&|;)?\\s*)*(?P<program>[^\\s;|&()…]+)` | success=\"false\" [$__range]))",
+          "legendFormat": "",
+          "refId": "A",
+          "queryType": "instant"
+        }
+      ],
+      "title": "Failed Shell Commands",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "description": "Shell commands that reach the network (curl, wget, ssh, Invoke-WebRequest, ...) plus WebFetch and WebSearch calls",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              }
+            ]
+          },
+          "unit": "short",
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 103
+      },
+      "id": 49,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": ""
+        },
+        "textMode": "auto"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "(sum(count_over_time({service_name=\"claude-code\"} | event_name=\"tool_result\" | tool_name=~\"Bash|PowerShell\" | line_format \"{{.tool_parameters}}\" | json full=\"full_command\" | drop __error__, __error_details__ | line_format \"{{.tool_input}}\" | json input=\"command\" | drop __error__, __error_details__ | label_format command=\"{{if .full}}{{.full}}{{else}}{{.input}}{{end}}\" | drop full, input | line_format \"{{.command}}\" | regexp `^\\s*(?:(?:[A-Za-z_][A-Za-z0-9_]*=(?:\"[^\"]*\"|'[^']*'|\\S*)|cd\\s+(?:\"[^\"]*\"|'[^']*'|\\S+)|sudo)\\s*(?:&&|;)?\\s*)*(?P<program>[^\\s;|&()…]+)` | program=~\"(?i)(curl|wget|ssh|scp|sftp|rsync|nc|ncat|telnet|ftp|Invoke-WebRequest|Invoke-RestMethod|iwr|irm|Start-BitsTransfer)(\\\\.exe)?\" [$__range])) or vector(0)) + (sum(count_over_time({service_name=\"claude-code\"} | event_name=\"tool_result\" | tool_name=~\"WebFetch|WebSearch\" [$__range])) or vector(0))",
+          "legendFormat": "",
+          "refId": "A",
+          "queryType": "instant"
+        }
+      ],
+      "title": "Network Access",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "description": "Most-used programs across Bash and PowerShell",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "continuous-BlPu"
+          },
+          "mappings": [],
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 107
+      },
+      "id": 50,
+      "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
+        "showUnfilled": true,
+        "valueMode": "color",
+        "namePlacement": "left",
+        "sizing": "auto",
+        "reduceOptions": {
+          "values": true,
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/^Value/",
+          "limit": 15
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "topk(15, sum by (program) (count_over_time({service_name=\"claude-code\"} | event_name=\"tool_result\" | tool_name=~\"Bash|PowerShell\" | line_format \"{{.tool_parameters}}\" | json full=\"full_command\" | drop __error__, __error_details__ | line_format \"{{.tool_input}}\" | json input=\"command\" | drop __error__, __error_details__ | label_format command=\"{{if .full}}{{.full}}{{else}}{{.input}}{{end}}\" | drop full, input | line_format \"{{.command}}\" | regexp `^\\s*(?:(?:[A-Za-z_][A-Za-z0-9_]*=(?:\"[^\"]*\"|'[^']*'|\\S*)|cd\\s+(?:\"[^\"]*\"|'[^']*'|\\S+)|sudo)\\s*(?:&&|;)?\\s*)*(?P<program>[^\\s;|&()…]+)` | program!=\"\" [$__range])))",
+          "legendFormat": "{{program}}",
+          "refId": "A",
+          "queryType": "instant"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "sortBy",
+          "options": {
+            "sort": [
+              {
+                "field": "Value #A",
+                "desc": true
+              }
+            ]
+          }
+        }
+      ],
+      "title": "Top Programs",
+      "type": "bargauge"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "description": "Top 10 programs per interval",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "lineWidth": 1,
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 107
+      },
+      "id": 51,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "topk(10, sum by (program) (count_over_time({service_name=\"claude-code\"} | event_name=\"tool_result\" | tool_name=~\"Bash|PowerShell\" | line_format \"{{.tool_parameters}}\" | json full=\"full_command\" | drop __error__, __error_details__ | line_format \"{{.tool_input}}\" | json input=\"command\" | drop __error__, __error_details__ | label_format command=\"{{if .full}}{{.full}}{{else}}{{.input}}{{end}}\" | drop full, input | line_format \"{{.command}}\" | regexp `^\\s*(?:(?:[A-Za-z_][A-Za-z0-9_]*=(?:\"[^\"]*\"|'[^']*'|\\S*)|cd\\s+(?:\"[^\"]*\"|'[^']*'|\\S+)|sudo)\\s*(?:&&|;)?\\s*)*(?P<program>[^\\s;|&()…]+)` | program!=\"\" [$__auto])))",
+          "legendFormat": "{{program}}",
+          "refId": "A",
+          "queryType": "range"
+        }
+      ],
+      "title": "Programs Over Time",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "description": "How each program got permission to run. config: allow rule, hook: PreToolUse hook, user_*: approved in a prompt",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "align": "auto",
+            "filterable": true
+          },
+          "noValue": "0"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 107
+      },
+      "id": 52,
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "sum by (program, decision_source) (count_over_time({service_name=\"claude-code\"} | event_name=\"tool_result\" | tool_name=~\"Bash|PowerShell\" | line_format \"{{.tool_parameters}}\" | json full=\"full_command\" | drop __error__, __error_details__ | line_format \"{{.tool_input}}\" | json input=\"command\" | drop __error__, __error_details__ | label_format command=\"{{if .full}}{{.full}}{{else}}{{.input}}{{end}}\" | drop full, input | line_format \"{{.command}}\" | regexp `^\\s*(?:(?:[A-Za-z_][A-Za-z0-9_]*=(?:\"[^\"]*\"|'[^']*'|\\S*)|cd\\s+(?:\"[^\"]*\"|'[^']*'|\\S+)|sudo)\\s*(?:&&|;)?\\s*)*(?P<program>[^\\s;|&()…]+)` | program!=\"\" [$__range]))",
+          "legendFormat": "",
+          "refId": "A",
+          "queryType": "instant"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        },
+        {
+          "id": "groupingToMatrix",
+          "options": {
+            "columnField": "decision_source",
+            "rowField": "program",
+            "valueField": "Value #A",
+            "emptyValue": "zero"
+          }
+        }
+      ],
+      "title": "Programs by Approval Source",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "description": "Every Bash and PowerShell command. Requires OTEL_LOG_TOOL_DETAILS=1. Expand a line for program, duration and session",
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 115
+      },
+      "id": 53,
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showCommonLabels": false,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "{service_name=\"claude-code\"} | event_name=\"tool_result\" | tool_name=~\"Bash|PowerShell\" | line_format \"{{.tool_parameters}}\" | json full=\"full_command\" | drop __error__, __error_details__ | line_format \"{{.tool_input}}\" | json input=\"command\" | drop __error__, __error_details__ | label_format command=\"{{if .full}}{{.full}}{{else}}{{.input}}{{end}}\" | drop full, input | line_format \"{{.command}}\" | regexp `^\\s*(?:(?:[A-Za-z_][A-Za-z0-9_]*=(?:\"[^\"]*\"|'[^']*'|\\S*)|cd\\s+(?:\"[^\"]*\"|'[^']*'|\\S+)|sudo)\\s*(?:&&|;)?\\s*)*(?P<program>[^\\s;|&()…]+)` | line_format \"{{if eq .success \\\"true\\\"}}✅{{else}}❌{{end}} [{{.tool_name}}] {{.decision_source}} · {{.command}}\"",
+          "queryType": "range",
+          "refId": "A"
+        }
+      ],
+      "title": "Shell Command Audit Log",
+      "type": "logs"
+    },
+    {
       "title": "⚡ Performance & Errors",
       "type": "row",
-      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 102},
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 125},
       "collapsed": false
     },
     {
@@ -3216,7 +3717,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 103
+        "y": 126
       },
       "id": 9,
       "options": {
@@ -3305,7 +3806,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 103
+        "y": 126
       },
       "id": 10,
       "options": {
@@ -3337,7 +3838,7 @@
     {
       "title": "📝 User Activity & Productivity",
       "type": "row",
-      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 111},
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 134},
       "collapsed": false
     },
     {
@@ -3400,7 +3901,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 112
+        "y": 135
       },
       "id": 11,
       "options": {
@@ -3489,7 +3990,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 112
+        "y": 135
       },
       "id": 12,
       "options": {
@@ -3531,7 +4032,7 @@
     {
       "title": "🔍 Event Logs",
       "type": "row",
-      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 120},
+      "gridPos": {"h": 1, "w": 24, "x": 0, "y": 143},
       "collapsed": false
     },
     {
@@ -3543,7 +4044,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 121
+        "y": 144
       },
       "id": 13,
       "options": {
@@ -3578,7 +4079,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 121
+        "y": 144
       },
       "id": 17,
       "options": {

@@ -73,27 +73,30 @@ make status
 ```
 
 ### 2. Configure Claude Code
+
+Add environment variables to Claude Code settings `~/.claude/settings.json`:
+
+```json
+{
+  "env": {
+    "CLAUDE_CODE_ENABLE_TELEMETRY": "1",
+    "OTEL_METRICS_EXPORTER": "otlp",
+    "OTEL_LOGS_EXPORTER": "otlp",
+    "OTEL_EXPORTER_OTLP_PROTOCOL": "grpc",
+    "OTEL_EXPORTER_OTLP_ENDPOINT": "http://localhost:4317",
+    "OTEL_METRIC_EXPORT_INTERVAL": 10000,
+    "OTEL_LOGS_EXPORT_INTERVAL": 5000,
+    "OTEL_LOG_TOOL_DETAILS": 1,
+    "OTEL_METRICS_INCLUDE_VERSION": true,
+    "OTEL_METRICS_INCLUDE_REPOSITORY": true,
+    "OTEL_RESOURCE_ATTRIBUTES": "team.id=platform"
+  }
+}
+```
+
+Run Claude Code:
+
 ```bash
-# Enable telemetry
-export CLAUDE_CODE_ENABLE_TELEMETRY=1
-
-# Configure exporters
-export OTEL_METRICS_EXPORTER=otlp
-export OTEL_LOGS_EXPORTER=otlp
-export OTEL_EXPORTER_OTLP_PROTOCOL=grpc
-export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
-
-# For debugging (faster export intervals)
-export OTEL_METRIC_EXPORT_INTERVAL=10000
-export OTEL_LOGS_EXPORT_INTERVAL=5000
-
-# Richer data for the Skills, MCP and Permissions sections
-export OTEL_LOG_TOOL_DETAILS=1                     # skill names, MCP names, tool params, full errors, custom command names
-export OTEL_METRICS_INCLUDE_VERSION=true           # compare behaviour across Claude Code versions
-export OTEL_METRICS_INCLUDE_REPOSITORY=true        # per-repo cost and usage (vcs.* attributes)
-export OTEL_RESOURCE_ATTRIBUTES=team.id=platform   # your own segmentation (comma-separated key=value, no spaces)
-
-# Run Claude Code
 claude
 ```
 
