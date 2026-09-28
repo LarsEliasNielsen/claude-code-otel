@@ -1,5 +1,11 @@
 # Claude Code Observability Stack
-.PHONY: help up down logs restart clean validate-config
+.PHONY: help up down logs restart clean validate-config sigma-rules test-sigma
+
+PYTHON ?= python3
+SIGMA_DIR := security/sigma
+SIGMA_VENV := $(SIGMA_DIR)/.venv
+# venv layout differs: Scripts/ on Windows, bin/ elsewhere
+SIGMA_PY = $(firstword $(wildcard $(SIGMA_VENV)/Scripts/python.exe $(SIGMA_VENV)/bin/python))
 
 help: ## Show this help message
 	@echo "Claude Code Observability Stack"
@@ -89,9 +95,34 @@ setup-claude: ## Display Claude Code telemetry setup instructions
 	@echo "export OTEL_METRIC_EXPORT_INTERVAL=10000"
 	@echo "export OTEL_LOGS_EXPORT_INTERVAL=5000"
 	@echo ""
+	@echo "Richer data for the Skills, MCP and Permissions sections:"
+	@echo "export OTEL_LOG_TOOL_DETAILS=1                     # skill names, MCP names, tool params, full errors, custom command names"
+	@echo "export OTEL_METRICS_INCLUDE_VERSION=true           # compare behaviour across Claude Code versions"
+	@echo "export OTEL_METRICS_INCLUDE_REPOSITORY=true        # per-repo cost and usage (vcs.* attributes)"
+	@echo "export OTEL_RESOURCE_ATTRIBUTES=team.id=platform   # your own segmentation (comma-separated key=value, no spaces)"
+	@echo ""
+	@echo "Note: OTEL_LOG_TOOL_DETAILS=1 exports bash commands and tool inputs to Loki."
+	@echo "Variables take effect for Claude Code sessions started after they are set."
+	@echo ""
+	@echo "Optional: Sigma command detection (see README). Add to ~/.claude/settings.json:"
+	@echo '  "hooks": { "PreToolUse": [ { "matcher": "Bash|PowerShell", "hooks": [ {'
+	@echo '    "type": "command", "async": true, "timeout": 30,'
+	@echo '    "command": "$(PYTHON) $(CURDIR)/$(SIGMA_DIR)/sigma_hook.py" } ] } ] }'
+	@echo ""
 	@echo "Then run: claude"
 
 demo-metrics: ## Generate demo metrics for testing
 	@echo "🎯 This would generate demo metrics if Claude Code was running"
 	@echo "💡 To see real metrics, ensure Claude Code is configured with telemetry enabled"
 	@echo "📖 Run 'make setup-claude' for setup instructions" 
+
+sigma-rules: ## Compile SigmaHQ command-line rules into security/sigma/rules.json
+	@test -d $(SIGMA_VENV) || $(PYTHON) -m venv $(SIGMA_VENV)
+	@$(MAKE) --no-print-directory _sigma-build
+
+_sigma-build:
+	$(SIGMA_PY) -m pip install -q pySigma pySigma-backend-sqlite
+	$(SIGMA_PY) $(SIGMA_DIR)/build_rules.py
+
+test-sigma: ## Run the Sigma hook tests
+	$(PYTHON) -m unittest discover -s $(SIGMA_DIR) -p 'test_*.py'

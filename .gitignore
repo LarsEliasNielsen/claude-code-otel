@@ -29,6 +29,7 @@ Thumbs.db
 
 # Python virtual environments
 venv/
+.venv/
 env/
 ENV/
 
@@ -44,3 +45,6 @@ loki_data/
 # Temporary files
 tmp/
 temp/ 
+
+# Sigma rule build cache
+security/sigma/.cache/

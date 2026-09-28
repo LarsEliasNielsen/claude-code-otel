@@ -73,23 +73,54 @@ make status
 ```
 
 ### 2. Configure Claude Code
+
+Add the following to Claude Code settings `~/.claude/settings.json`. Replace `/path/to/claude-code-otel` with the path to this checkout (`make setup-claude` prints the hook snippet with your path filled in):
+
+```json
+{
+  "env": {
+    "CLAUDE_CODE_ENABLE_TELEMETRY": "1",
+    "OTEL_METRICS_EXPORTER": "otlp",
+    "OTEL_LOGS_EXPORTER": "otlp",
+    "OTEL_EXPORTER_OTLP_PROTOCOL": "grpc",
+    "OTEL_EXPORTER_OTLP_ENDPOINT": "http://localhost:4317",
+    "OTEL_METRIC_EXPORT_INTERVAL": 10000,
+    "OTEL_LOGS_EXPORT_INTERVAL": 5000,
+    "OTEL_LOG_TOOL_DETAILS": 1,
+    "OTEL_METRICS_INCLUDE_VERSION": true,
+    "OTEL_METRICS_INCLUDE_REPOSITORY": true,
+    "OTEL_RESOURCE_ATTRIBUTES": "team.id=platform"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "async": true,
+            "timeout": 30,
+            "command": "python /path/to/claude-code-otel/security/sigma/sigma_hook.py"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+- **`env`** turns on Claude Code's own telemetry, which feeds the **Claude Code** dashboard. Use the variable names exactly as shown. A name copied from a shell, such as `$env:OTEL_METRICS_INCLUDE_VERSION` or `export OTEL_...`, is set as a different variable and silently does nothing.
+- **`hooks`** registers the [Sigma command detection](#-sigma-command-detection) hook, which feeds the **Claude Code Security** dashboard. Claude Code's telemetry does not include these events, so without the hook that dashboard stays empty. The hook needs Python 3.9+. Use the Python launcher on your `PATH`: on Windows that is usually `python`, not `python3` (`make setup-claude PYTHON=python`). The hook runs in the background, so a wrong launcher fails silently.
+
+If your settings file already has an `env` or `hooks` block, merge these entries into it. In particular, add the object above to an existing `PreToolUse` array instead of replacing the array.
+
+Run Claude Code:
+
 ```bash
-# Enable telemetry
-export CLAUDE_CODE_ENABLE_TELEMETRY=1
-
-# Configure exporters
-export OTEL_METRICS_EXPORTER=otlp
-export OTEL_LOGS_EXPORTER=otlp
-export OTEL_EXPORTER_OTLP_PROTOCOL=grpc
-export OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
-
-# For debugging (faster export intervals)
-export OTEL_METRIC_EXPORT_INTERVAL=10000
-export OTEL_LOGS_EXPORT_INTERVAL=5000
-
-# Run Claude Code
 claude
 ```
+
+> `OTEL_LOG_TOOL_DETAILS=1` exports bash commands and tool inputs to Loki, and the Sigma hook sends every Bash and PowerShell command to it. Treat the logs backend as sensitive. Settings take effect for Claude Code sessions started after they are saved.
 
 ### 3. Access Dashboards
 - **Grafana**: http://localhost:3000 (admin/admin)
@@ -171,6 +202,19 @@ The Grafana dashboard is organized into sections reflecting the observability do
 - Tool frequency and success rates
 - Performance bottleneck identification
 
+### 🧩 Skills
+- Skill activations, cost and tokens per skill, source and invocation trigger
+
+### 🔌 MCP Servers & Tools
+- Calls, success rate, p95 latency and result size per server/tool
+- Server connection status and cost of requests that consumed MCP results
+
+### 🛡️ Permissions
+- Tool decisions by source (allow rule, hook, user prompt, rejection) and by tool
+- Code edit decisions, permission mode changes, rejection log
+
+> Skill and MCP names on tool events require `OTEL_LOG_TOOL_DETAILS=1`.
+
 ### ⚡ Performance & Errors
 - API latency by model, error rate tracking
 - Performance monitoring as recommended
@@ -182,6 +226,22 @@ The Grafana dashboard is organized into sections reflecting the observability do
 ### 🔍 Event Logs
 - Real-time tool execution events and API errors
 - Structured log analysis for troubleshooting
+
+## 🚨 Sigma Command Detection
+
+A PreToolUse hook checks every Bash and PowerShell command Claude Code runs against about 1,300 [SigmaHQ](https://github.com/SigmaHQ/sigma) command-line rules (reverse shells, download cradles, encoded PowerShell, certutil abuse, and so on). Matches show up in the **Claude Code Security** dashboard with rule level, MITRE ATT&CK techniques, and whether the command succeeded and how it was approved.
+
+The hook only reports. It runs in the background, adds no delay and never blocks a command. It needs Python 3.9+ and nothing else.
+
+1. Register the hook in `~/.claude/settings.json` with the `hooks` block from [Configure Claude Code](#2-configure-claude-code).
+
+2. Start a new Claude Code session and let it run a Bash or PowerShell command. Check that the events arrived: `curl -s http://localhost:3100/loki/api/v1/label/service_name/values` should list `claude-code-sigma`.
+
+3. Open http://localhost:3000/d/claude-code-security. Hide noisy rules with the **Exclude rules** filter. Only commands run after the hook was registered appear. On a quiet day, **Commands Scanned** counts up while the match panels stay at zero.
+
+Try a command without running it: `python security/sigma/sigma_hook.py --scan "echo aGk= | base64 -d | bash"`.
+
+`make sigma-rules` rebuilds `security/sigma/rules.json` from the pinned SigmaHQ release (it installs pySigma into `security/sigma/.venv`). `make test-sigma` runs the tests. The commands are sent to your local collector only. Event reference: [CLAUDE_OBSERVABILITY.md](CLAUDE_OBSERVABILITY.md#sigma-detections).
 
 ## 🔧 Advanced Configuration
 
