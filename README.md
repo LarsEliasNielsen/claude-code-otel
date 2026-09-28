@@ -74,7 +74,7 @@ make status
 
 ### 2. Configure Claude Code
 
-Add environment variables to Claude Code settings `~/.claude/settings.json`:
+Add the following to Claude Code settings `~/.claude/settings.json`. Replace `/path/to/claude-code-otel` with the path to this checkout (`make setup-claude` prints the hook snippet with your path filled in):
 
 ```json
 {
@@ -90,9 +90,29 @@ Add environment variables to Claude Code settings `~/.claude/settings.json`:
     "OTEL_METRICS_INCLUDE_VERSION": true,
     "OTEL_METRICS_INCLUDE_REPOSITORY": true,
     "OTEL_RESOURCE_ATTRIBUTES": "team.id=platform"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "async": true,
+            "timeout": 30,
+            "command": "python /path/to/claude-code-otel/security/sigma/sigma_hook.py"
+          }
+        ]
+      }
+    ]
   }
 }
 ```
+
+- **`env`** turns on Claude Code's own telemetry, which feeds the **Claude Code** dashboard. Use the variable names exactly as shown. A name copied from a shell, such as `$env:OTEL_METRICS_INCLUDE_VERSION` or `export OTEL_...`, is set as a different variable and silently does nothing.
+- **`hooks`** registers the [Sigma command detection](#-sigma-command-detection) hook, which feeds the **Claude Code Security** dashboard. Claude Code's telemetry does not include these events, so without the hook that dashboard stays empty. The hook needs Python 3.9+. Use the Python launcher on your `PATH`: on Windows that is usually `python`, not `python3` (`make setup-claude PYTHON=python`). The hook runs in the background, so a wrong launcher fails silently.
+
+If your settings file already has an `env` or `hooks` block, merge these entries into it. In particular, add the object above to an existing `PreToolUse` array instead of replacing the array.
 
 Run Claude Code:
 
@@ -100,7 +120,7 @@ Run Claude Code:
 claude
 ```
 
-> `OTEL_LOG_TOOL_DETAILS=1` exports bash commands and tool inputs to Loki. Treat the logs backend as sensitive when it is on. The variables take effect for Claude Code sessions started after they are set.
+> `OTEL_LOG_TOOL_DETAILS=1` exports bash commands and tool inputs to Loki, and the Sigma hook sends every Bash and PowerShell command to it. Treat the logs backend as sensitive. Settings take effect for Claude Code sessions started after they are saved.
 
 ### 3. Access Dashboards
 - **Grafana**: http://localhost:3000 (admin/admin)
@@ -213,21 +233,11 @@ A PreToolUse hook checks every Bash and PowerShell command Claude Code runs agai
 
 The hook only reports. It runs in the background, adds no delay and never blocks a command. It needs Python 3.9+ and nothing else.
 
-1. Register the hook in `~/.claude/settings.json` (`make setup-claude` prints the snippet with your path):
+1. Register the hook in `~/.claude/settings.json` with the `hooks` block from [Configure Claude Code](#2-configure-claude-code).
 
-   ```json
-   "hooks": {
-     "PreToolUse": [{
-       "matcher": "Bash|PowerShell",
-       "hooks": [{
-         "type": "command", "async": true, "timeout": 30,
-         "command": "python /path/to/claude-code-otel/security/sigma/sigma_hook.py"
-       }]
-     }]
-   }
-   ```
+2. Start a new Claude Code session and let it run a Bash or PowerShell command. Check that the events arrived: `curl -s http://localhost:3100/loki/api/v1/label/service_name/values` should list `claude-code-sigma`.
 
-2. Open http://localhost:3000/d/claude-code-security. Hide noisy rules with the **Exclude rules** filter.
+3. Open http://localhost:3000/d/claude-code-security. Hide noisy rules with the **Exclude rules** filter. Only commands run after the hook was registered appear. On a quiet day, **Commands Scanned** counts up while the match panels stay at zero.
 
 Try a command without running it: `python security/sigma/sigma_hook.py --scan "echo aGk= | base64 -d | bash"`.
 
